@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "ESNext",
+    // "moduleResolution": "Node",
+    "types": ["node"],
+    "esModuleInterop": true,
+    "strict": true
+  },
+  "include": ["**/*.ts", "assets/organicTyper.js"]
+}
