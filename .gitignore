@@ -15,6 +15,7 @@ package-json.lock
 #bun lock
 bun.lock
 
+
 # bun deploy file
 node_modules.bun
 
