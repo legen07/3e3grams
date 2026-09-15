@@ -1,17 +1,57 @@
 {
   "name": "telegram",
   "version": "1.0.0",
-  "description": "Telegram automation",
-  "license": "MIT",
-  "author": "Joe Legen",
-  "type": "module",
+  "description": "Telegram automation framework for intelligent dialog management, trend analysis, and channel operations with Reddit integration and MongoDB persistence.",
   "main": "index.js",
+  "type": "module",
+  "author": "Joe Legen",
+  "license": "MIT",
+  "homepage": "https://github.com/legen07/telegram#readme",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:legen07/telegram.git"
+  },
+  "bugs": {
+    "url": "https://github.com/legen07/telegram/issues"
+  },
+  "keywords": [
+    "telegram",
+    "automation",
+    "telegram-bot",
+    "telegram-client",
+    "dialog-management",
+    "trend-analysis",
+    "reddit",
+    "mongodb",
+    "playwright",
+    "puppeteer",
+    "channel-management",
+    "scraping",
+    "nodejs",
+    "javascript"
+  ],
+  "topics": [
+    "telegram",
+    "automation",
+    "telegram-api",
+    "dialogs",
+    "trending",
+    "mongodb",
+    "playwright",
+    "puppeteer",
+    "nodejs",
+    "javascript"
+  ],
   "imports": {
     "#/*": "./*"
   },
   "scripts": {
     "scrape": "google-chrome --remote-debugging-port=9222 --no-first-run --no-default-browser-check --user-data-dir='/home/joe/Dev/telegram/chromium'",
-    "mongo": "systemctl start mongod && mongodb-compass"
+    "mongo": "systemctl start mongod && mongodb-compass",
+    "start": "node index.js",
+    "lint": "eslint . --ext .js",
+    "format": "prettier --write .",
+    "test": "echo \"No tests configured yet\" && exit 0"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
@@ -32,5 +72,9 @@
     "@types/node": "^26.0.0",
     "globals": "^17.7.0",
     "typescript": "^6.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
   }
 }

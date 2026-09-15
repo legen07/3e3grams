@@ -115,3 +115,27 @@ dist
 
 # TernJS port file
 .tern-port
+
+# GitHub Actions
+.github/workflows/*.yml
+!.github/workflows/ci.yml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.compiled
+
+# Debug
+debug.log
+debug.*

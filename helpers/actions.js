@@ -49,10 +49,10 @@ async function deleteNoMsgChats(client, dialogs) {
 }
 
 async function exit() {
-    if (!(await input.confirm("Press Enter to continue..."))) {
-      console.log(kleur.red("Exiting the program."));
-      process.exit(0);
-    }
+  if (!(await input.confirm("Press Enter to continue..."))) {
+    console.log(kleur.red("Exiting the program."));
+    process.exit(0);
   }
+}
 
 export { deletePrivate, deleteNoMsgChats, exit };

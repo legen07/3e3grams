@@ -46,17 +46,16 @@ async function main() {
   console.log(kleur.yellow(unreadGroups));
   if (unreadGroups.length < 1) {
     console.log(kleur.red("There are Unread messages. Lets work on them. "));
+
+    
+  } else {
+    console.log(kleur.red("Insufficient Unread messages from Groups."));
   }
 
   await channelWorks(client, dialogs.channels);
 
   await exit();
 
-  console.log(kleur.red("Insufficient Unread messages from Groups."));
-  console
-    .log
-    // dialogs.channels
-    ();
 
   await exit();
 
