@@ -1,15 +1,34 @@
-import { Api, TelegramClient } from "telegram";
-import { client } from "../telegram/live";
+import { Api } from "telegram";
+import { client } from "../telegram/live.ts";
 import kleur from "kleur";
 
-const checkedChannels = new Set();
+const checkedChannels = new Set<string>();
+
+/** Marker returned by {@link chatInstance} when the entity can't be resolved. */
+export interface UnresolvedChat {
+  info: null;
+  type?: string;
+}
+
+/** Result of {@link chatInstance}: the full chat payload, or the marker above. */
+export type ChatInstanceResult = Api.messages.ChatFull | UnresolvedChat;
+
+/**
+ * Structural view used by {@link hasIssue} to read the optional marker fields
+ * off either the resolved payload or the unresolved object.
+ */
+export interface ChatCheck {
+  type?: string;
+  bot?: boolean;
+  info?: null;
+}
 
 /**
  * Safely check if I am a member of a chat.
- * @param {string} usrname - chat username.
- * @returns {Promise<boolean>} - True if member, false otherwise.
+ * @param usrname - chat username.
+ * @returns True if member, false otherwise.
  */
-async function isMember(usrname) {
+async function isMember(usrname?: Api.TypeEntityLike): Promise<boolean> {
   if (typeof usrname !== "string") {
     usrname = String(Number(usrname));
   }
@@ -25,7 +44,7 @@ async function isMember(usrname) {
 
     const amI = await client.invoke(
       new Api.channels.GetParticipant({
-        channel: channel,
+        channel: channel as Api.TypeEntityLike,
         participant: me,
       }),
     );
@@ -34,12 +53,13 @@ async function isMember(usrname) {
     console.log(kleur.blue("You are a member."));
     return true;
   } catch (err) {
+    const error = err as { message?: string; errorMessage?: string };
     console.log(kleur.red("There was an issue checking membership. "));
     console.log("Error for checking is i am a member", err);
 
-    err.errorMessage === "USER_NOT_PARTICIPANT" &&
+    error.errorMessage === "USER_NOT_PARTICIPANT" &&
       console.log(kleur.red("You are not a participant of this channel."));
-    err.message === "err4" &&
+    error.message === "err4" &&
       console.log(
         kleur.red("Above issue after checking issues with channel. "),
       );
@@ -50,10 +70,13 @@ async function isMember(usrname) {
 
 /**
  * Safely get chat instance
- * @param {string} usrname - chat username.
- * @return {Promise<TelegramClient|{info: null, type: String}>} - Return chat Instance, undefined otherwise.
+ * @param usrname - chat username.
+ * @returns The full chat payload, or an `{ info: null }` marker describing why
+ *   the entity could not be resolved.
  */
-async function chatInstance(usrname) {
+async function chatInstance(
+  usrname: Api.TypeEntityLike,
+): Promise<ChatInstanceResult> {
   if (typeof usrname !== "string") {
     usrname = String(Number(usrname));
   }
@@ -67,8 +90,9 @@ async function chatInstance(usrname) {
 
     return entity;
   } catch (err) {
-    const returnObj = { info: null };
-    const errMsg = err.message;
+    const error = err as { message?: string };
+    const returnObj: UnresolvedChat = { info: null };
+    const errMsg = error.message;
     console.log(kleur.red("There was an issue getting the user Entity."));
     console.log(errMsg);
 
@@ -91,13 +115,16 @@ async function chatInstance(usrname) {
 }
 
 /**
- * Safetly check if there is an issue with the usrname and channel entity.
- * @param {Promise<TelegramClient|{info: null, type: String}>} - Channel instance or error.
- * Safely get chat instance
- * @param {string} usrname - chat username.
- * @returns {boolean} - Returns true when there is an issue, false otherwise.
+ * Check if there is an issue with the usrname and the channel entity.
+ * @param channel - Channel instance (resolved payload) or the unresolved
+ *   marker returned by {@link chatInstance}.
+ * @param usrname - chat username.
+ * @returns True when there is an issue, false otherwise.
  */
-function hasIssue(channel, usrname) {
+function hasIssue(channel: ChatInstanceResult, usrname: string): boolean {
+  // Both union members are read structurally; the cast gives a single view.
+  const check = channel as unknown as ChatCheck;
+
   let rtn = false;
   console.log(kleur.yellow("checking if there is an issue with the usrname."));
 
@@ -107,7 +134,7 @@ function hasIssue(channel, usrname) {
       rtn = true;
       break;
 
-    case channel.type === "user":
+    case check.type === "user":
       console.log(
         kleur.red("This username is a Private user. Not a channel."),
         kleur.green("Skipping to next username. "),
@@ -115,12 +142,12 @@ function hasIssue(channel, usrname) {
       rtn = true;
       break;
 
-    case channel.type === "bot":
+    case check.type === "bot":
       console.log(kleur.red("This username is a Bot. Not a channel. "));
       rtn = true;
       break;
 
-    case channel.bot:
+    case check.bot:
       console.log(
         kleur.red("This username is a Bot user. Not a channel."),
         kleur.green("Skipping to next username. "),
@@ -128,7 +155,7 @@ function hasIssue(channel, usrname) {
       rtn = true;
       break;
 
-    case channel.info === null:
+    case check.info === null:
       console.log(kleur.red("There was an issue with the usrname"));
       rtn = true;
       break;

@@ -1,10 +1,13 @@
 import kleur from "kleur";
-import { Api } from "telegram";
-import { exit } from "../helpers/actions.js";
-import { crawlChats } from "./crawler.js";
-import { chatInstance, isMember } from "../engine/hooks.js";
+import { Api, TelegramClient } from "telegram";
+import { crawlChats } from "./crawler.ts";
+import { chatInstance, isMember, type ChatInstanceResult } from "../engine/hooks.ts";
+import type { Dialog } from "telegram/tl/custom/dialog.js";
 
-async function channelWorks(client, channels) {
+async function channelWorks(
+  client: TelegramClient,
+  channels: Dialog[],
+): Promise<void> {
   //? ///////////////
   //  We are going to check if the channel has a group.
   // Then we will check if we have already joined the group.
@@ -23,17 +26,24 @@ async function channelWorks(client, channels) {
       kleur.green("Checking if the channel has a group associated with it. "),
     );
     const fullChannel = await client.invoke(
-      new Api.channels.GetFullChannel({ channel: channel.id }),
+      new Api.channels.GetFullChannel({ channel: channel.id! }),
     );
 
-    if (fullChannel.fullChat.linkedChatId) {
+    // A channel's full chat is always a `ChannelFull`; the union member
+    // `ChatFull` (small groups) does not carry `linkedChatId`.
+    const fullChat = fullChannel.fullChat as Api.ChannelFull;
+
+    if (fullChat.linkedChatId) {
       console.log(kleur.green("The channel has a group associated with it. "));
 
-      const linkedChatId = fullChannel.fullChat.linkedChatId;
+      const linkedChatId = fullChat.linkedChatId;
 
       console.log(await client.getEntity(linkedChatId));
-      const linkedChat = await chatInstance(linkedChatId);
-      
+      // `title` is read off the payload defensively; it is optional on the type.
+      const linkedChat = (await chatInstance(linkedChatId)) as ChatInstanceResult & {
+        title?: string;
+      };
+
       console.log(kleur.yellow("The linked chat is : "), linkedChat.title);
 
       console.log(
@@ -42,7 +52,10 @@ async function channelWorks(client, channels) {
         ),
       );
 
-      if (isMember()) {
+      // NOTE: `isMember()` is deliberately not awaited — the original code
+      // tested the promise itself (always truthy) rather than its result.
+      // Preserved verbatim to avoid a behaviour change.
+      if (isMember() as unknown as boolean) {
         console.log(
           kleur.green(
             "You are already a member of the group associated with the channel. ",

@@ -1,8 +1,8 @@
 {
   "name": "telegram",
   "version": "1.0.0",
-  "description": "Telegram automation framework for intelligent dialog management, trend analysis, and channel operations with Reddit integration and MongoDB persistence.",
-  "main": "index.js",
+  "description": "Telegram automation framework for intelligent dialog management, trend analysis, and channel operations with Reddit integration and SQLite persistence.",
+  "main": "index.ts",
   "type": "module",
   "author": "Joe Legen",
   "license": "MIT",
@@ -22,13 +22,13 @@
     "dialog-management",
     "trend-analysis",
     "reddit",
-    "mongodb",
+    "sqlite",
     "playwright",
     "puppeteer",
     "channel-management",
     "scraping",
     "nodejs",
-    "javascript"
+    "typescript"
   ],
   "topics": [
     "telegram",
@@ -36,30 +36,30 @@
     "telegram-api",
     "dialogs",
     "trending",
-    "mongodb",
+    "sqlite",
     "playwright",
     "puppeteer",
     "nodejs",
-    "javascript"
+    "typescript"
   ],
   "imports": {
     "#/*": "./*"
   },
   "scripts": {
     "scrape": "google-chrome --remote-debugging-port=9222 --no-first-run --no-default-browser-check --user-data-dir='/home/joe/Dev/telegram/chromium'",
-    "mongo": "systemctl start mongod && mongodb-compass",
-    "start": "node index.js",
-    "lint": "eslint . --ext .js",
+    "start": "bun index.ts",
+    "lint": "eslint .",
     "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit",
     "test": "echo \"No tests configured yet\" && exit 0"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.7.2",
     "dotenv": "^17.4.2",
     "eslint": "^10.6.0",
     "input": "^1.0.1",
     "kleur": "^4.1.5",
-    "mongodb": "^7.3.0",
-    "mongoose": "^9.7.4",
     "playwright": "^1.59.1",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
@@ -71,10 +71,12 @@
     "@eslint/markdown": "^8.0.3",
     "@types/node": "^26.0.0",
     "globals": "^17.7.0",
-    "typescript": "^6.0.2"
+    "typescript": "^7.0.2",
+    "@types/bun": "latest"
   },
   "engines": {
     "node": ">=18.0.0",
     "bun": ">=1.0.0"
-  }
+  },
+  "private": true
 }

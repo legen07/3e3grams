@@ -1,18 +1,16 @@
-import { createClient } from "./telegram/client.js";
-import { fetchDialogs } from "./telegram/dialogs.js";
-import { getTrendingKeywords } from "./reddit/trends.js";
-import { Api, TelegramClient } from "telegram";
-import { StringSession } from "telegram/sessions/index.js";
-import { searchTelegram } from "./telegram/search.js";
-import { crawlChats } from "./telegram/crawler.js";
-import { detectTopic } from "./engine/chatAnalyzer.js";
-import input from "input";
+import { createClient } from "./telegram/client.ts";
+import { fetchDialogs } from "./telegram/dialogs.ts";
+import { getTrendingKeywords } from "./reddit/trends.ts";
+import { searchTelegram } from "./telegram/search.ts";
+import type { SearchedChat } from "./telegram/search.ts";
+import { crawlChats } from "./telegram/crawler.ts";
 import kleur from "kleur";
-import { deletePrivate, exit } from "./helpers/actions.js";
-import { channelWorks } from "./telegram/channel.js";
-import { client } from "./telegram/live.js";
+import { exit } from "./helpers/actions.ts";
+import { channelWorks } from "./telegram/channel.ts";
+import { client } from "./telegram/live.ts";
+import type { Dialog } from "telegram/tl/custom/dialog.js";
 
-async function main() {
+async function main(): Promise<void> {
   console.log("Starting Telegram...");
 
   console.log("Check to see if user is authorized...");
@@ -26,8 +24,6 @@ async function main() {
     console.log(kleur.blue().bold("User is already authorized."));
   }
 
- 
-
   console.log(kleur.green("Now Lets get all the available Chats."));
   const dialogs = await fetchDialogs(client);
 
@@ -36,18 +32,18 @@ async function main() {
   console.log(
     kleur.green("List of available Chats : \n"),
     kleur.yellow(
-      Object.entries(dialogs).flatMap(([key, chats]) => {
-        console.log(chats);
-        return chats.map((chat) => chat.title).join("\n");
-      }),
+      String(
+        Object.entries(dialogs).flatMap(([key, chats]: [string, Dialog[]]) => {
+          console.log(chats);
+          return chats.map((chat) => chat.title).join("\n");
+        }),
+      ),
     ),
   );
   console.log(kleur.green("List of unread Groups : \n"));
-  console.log(kleur.yellow(unreadGroups));
+  console.log(kleur.yellow(String(unreadGroups)));
   if (unreadGroups.length < 1) {
     console.log(kleur.red("There are Unread messages. Lets work on them. "));
-
-    
   } else {
     console.log(kleur.red("Insufficient Unread messages from Groups."));
   }
@@ -56,21 +52,22 @@ async function main() {
 
   await exit();
 
-
   await exit();
 
   const keywords = await getTrendingKeywords();
 
-  let discoveredChats = [];
+  const discoveredChats: SearchedChat[] = [];
 
   for (const keyword of keywords.slice(0, 10)) {
     const results = await searchTelegram(client, keyword);
     discoveredChats.push(...results);
   }
 
-  const graph = await crawlChats(client, discoveredChats);
+  // `crawlChats` takes the chat list; it returns nothing, so there is no graph
+  // to report here.
+  await crawlChats(discoveredChats);
 
-  console.log("Graph built:", graph.size);
+  console.log("Done crawling discovered chats.");
 }
 
 main();

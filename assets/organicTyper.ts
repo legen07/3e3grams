@@ -1,17 +1,18 @@
 /**
- * organicTyper.js
+ * organicTyper.ts
  * Mimics human typing: variable speed, realistic typos, corrections.
  * Pure ES2022+ (no dependencies).
  *
- * @param {string}   text        - The string to "type"
- * @param {Function} onUpdate    - Called with the current visible string each tick
- * @param {Object}  [opts]       - Optional tuning knobs
- * @returns {Promise<void>}      - Resolves when typing is complete
+ * @param text        - The string to "type"
+ * @param onUpdate    - Called with the current visible string each tick
+ * @param opts        - Optional tuning knobs
+ * @returns           Resolves when typing is complete
  */
 
 // ─── Keyboard Adjacency Map ───────────────────────────────────────────────────
 // Each key maps to its physically adjacent keys on a QWERTY layout.
-const ADJACENCY = {
+// Characters not present in the map fall back to themselves.
+const ADJACENCY: Record<string, string | undefined> = {
   a: "sqwz",  b: "vghn",  c: "xdfv",  d: "serfcx", e: "wsdr34",
   f: "drtgvc", g: "ftyhbv", h: "gyujnb", i: "ujko89", j: "huikmn",
   k: "jiolm,", l: "kop;,.", m: "njk,",  n: "bhjm",   o: "iklp90",
@@ -24,16 +25,16 @@ const ADJACENCY = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Uniform random float in [min, max) */
-const rand = (min, max) => Math.random() * (max - min) + min;
+const rand = (min: number, max: number): number => Math.random() * (max - min) + min;
 
 /** Bernoulli trial: true with probability p */
-const chance = (p) => Math.random() < p;
+const chance = (p: number): boolean => Math.random() < p;
 
 /** Pick a random adjacent key, or the key itself if none found */
-const adjacentKey = (ch) => {
+const adjacentKey = (ch: string): string => {
   const pool = ADJACENCY[ch.toLowerCase()] ?? ch;
   const candidates = pool.replace(ch.toLowerCase(), "");
   if (!candidates) return ch;
@@ -45,18 +46,30 @@ const adjacentKey = (ch) => {
 // ─── Main Function ────────────────────────────────────────────────────────────
 
 /**
- * @typedef  {Object} TypingOptions
- * @property {number} baseDelay      - Median ms per character          (default 90)
- * @property {number} jitter         - ± random ms added to each key    (default 60)
- * @property {number} typoRate       - Probability of a typo per char   (default 0.07)
- * @property {number} burstRate      - Probability of a typing burst     (default 0.15)
- * @property {number} pauseRate      - Probability of a long think-pause (default 0.04)
- * @property {number} pauseDuration  - How long think-pauses last (ms)  (default 600)
- * @property {number} backspaceDelay - ms per backspace key              (default 110)
- * @property {number} correctionGap  - ms pause before correcting typo  (default 250)
+ * Tuning knobs for {@link organicTyper}.
  */
+export interface TypingOptions {
+  baseDelay: number;       // Median ms per character          (default 90)
+  jitter: number;          // ± random ms added to each key    (default 60)
+  typoRate: number;        // Probability of a typo per char   (default 0.07)
+  burstRate: number;       // Probability of a typing burst     (default 0.15)
+  pauseRate: number;       // Probability of a long think-pause (default 0.04)
+  pauseDuration: number;   // How long think-pauses last (ms)  (default 600)
+  backspaceDelay: number;  // ms per backspace key              (default 110)
+  correctionGap: number;   // ms pause before correcting typo  (default 250)
+}
 
-export async function organicTyper(text, onUpdate, opts = {}) {
+/** Callback invoked with the currently visible buffer. */
+export type TypingUpdate = (text: string) => Promise<void> | void;
+
+/**
+ * Types `text` as a human would: variable speed, realistic typos, corrections.
+ */
+export async function organicTyper(
+  text: string,
+  onUpdate: TypingUpdate,
+  opts: Partial<TypingOptions> = {},
+): Promise<void> {
   const {
     baseDelay      = 90,
     jitter         = 60,
@@ -72,7 +85,7 @@ export async function organicTyper(text, onUpdate, opts = {}) {
   let burstMode = false;   // Typing in a fast burst?
   let burstRemaining = 0;
 
-  const emit = async () => await onUpdate(buffer);
+  const emit = async (): Promise<void> => await onUpdate(buffer);
 
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];

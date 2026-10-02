@@ -31,7 +31,7 @@ curl -s -X PATCH \
     -H "Authorization: Bearer $GITHUB_TOKEN" \
     "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}" \
     -d '{
-        "description": "Telegram automation framework for intelligent dialog management, trend analysis, and channel operations with Reddit integration and MongoDB persistence.",
+        "description": "Telegram automation framework for intelligent dialog management, trend analysis, and channel operations with Reddit integration and SQLite persistence.",
         "has_issues": true,
         "has_projects": true,
         "has_wiki": true,
@@ -54,7 +54,7 @@ curl -s -X PUT \
             "dialogs",
             "trending",
             "reddit",
-            "mongodb",
+            "sqlite",
             "playwright",
             "puppeteer",
             "nodejs",

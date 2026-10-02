@@ -16,7 +16,7 @@ If you discover a security vulnerability, please report it by emailing **gafful0
 ### Environment Security
 
 - **Never commit `.env` files** to the repository
-- **Never expose** `API_ID`, `API_HASH`, `SESSION`, or `MONGODB_URI` in code
+- **Never expose** `API_ID`, `API_HASH`, `SESSION`, or `SQLITE_PATH` in code
 - Always use `.env.example` as a template for new contributors
 - Rotate session tokens periodically
 
@@ -33,12 +33,12 @@ If you discover a security vulnerability, please report it by emailing **gafful0
 - Use 2FA passwords for Telegram accounts
 - Monitor active sessions regularly
 
-### MongoDB Security
+### SQLite Security
 
-- Use authentication and network isolation
-- Do not expose MongoDB ports publicly
-- Encrypt sensitive data at rest
-- Regularly back up the database
+- SQLite is a local file store — keep the database file (`./data/`) permissions restrictive
+- Do not expose the database file or its directory publicly
+- Encrypt sensitive data at rest if the host is shared
+- Regularly back up the database file
 
 ## Response Timeline
 

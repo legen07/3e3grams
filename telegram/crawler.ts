@@ -1,13 +1,33 @@
-import { Channel, JoinedDate, JoinLater } from "../db/models.js";
+import { Channel, JoinedDate, JoinLater } from "../db/models.ts";
 import { Api } from "telegram";
-import { connectDB } from "../db/connection.js";
-import { client } from "./live.js";
-import { exit } from "../helpers/actions.js";
-import { sanitizeAndExtract } from "../engine/crawledData.js";
+import { connectDB } from "../db/connection.ts";
+import { client } from "./live.ts";
+import { sanitizeAndExtract } from "../engine/crawledData.ts";
 import kleur from "kleur";
-import { chatInstance, isMember, hasIssue } from "../engine/hooks.js";
+import { chatInstance, isMember, hasIssue } from "../engine/hooks.ts";
+import type { ChannelDoc, JoinedEntry, Savable } from "../db/models.ts";
 
-export async function crawlChats(chats) {
+/** A chat that can be crawled: either a dialog or a search result. */
+export interface CrawlableChat {
+  id?: Api.Chat["id"];
+  title?: string;
+  username?: string;
+  entity?: unknown;
+}
+
+/**
+ * Full-chat payload plus the optional fields the crawler reads off it.
+ * `fullChat` is narrowed to `ChannelFull`, the shape GetFullChannel returns for
+ * channels (the union member `ChatFull` lacks `participantsCount`).
+ */
+type ChatPayload = Api.messages.ChatFull & {
+  fullChat: Api.ChannelFull;
+  title?: string;
+  id?: number;
+  isGroup?: boolean;
+};
+
+export async function crawlChats(chats: CrawlableChat[]): Promise<void> {
   await connectDB();
 
   //? ////////////////
@@ -24,7 +44,9 @@ export async function crawlChats(chats) {
       ),
     );
 
-    let chatDB = (await Channel.find({ id: chatId }))[0];
+    let chatDB: Savable<ChannelDoc> = (
+      await Channel.find({ id: chatId })
+    )[0];
 
     console.log(chatDB);
     if (!chatDB) {
@@ -34,7 +56,7 @@ export async function crawlChats(chats) {
         ),
       );
       chatDB = await Channel.create({
-        name: chat.title,
+        name: chat.title!,
         id: chatId,
         last_msg_scraped: 0,
       });
@@ -43,14 +65,14 @@ export async function crawlChats(chats) {
       console.log(kleur.blue("Channel is in database."));
     }
 
-    const a = (c) => {
+    const a = (c?: string) => {
       if (c) {
         chatDB.username = c;
         return true;
       } else false;
     };
 
-    a(chat.entity.username) || a(chat.username);
+    a((chat.entity as { username?: string }).username) || a(chat.username);
 
     let stop = true;
     const lstMsg = await client.getMessages(chat.id, {
@@ -67,8 +89,8 @@ export async function crawlChats(chats) {
         reverse: true,
         offsetDate: lastMsgLevel,
       });
-      const totalMsgs = messages.total;
-      const newMsgLevel = ((lst) =>
+      const totalMsgs = messages.total!;
+      const newMsgLevel = ((lst: number) =>
         lst + 50 > totalMsgs ? totalMsgs : lst + 50)(lastMsgLevel);
 
       console.log(kleur.yellow("Below are 50 messages from the channel. "));
@@ -94,7 +116,7 @@ export async function crawlChats(chats) {
         );
 
         await contineo();
-        await new Promise((res) => setTimeout(res, 1e4));
+        await new Promise<void>((res) => setTimeout(res, 1e4));
         continue;
       }
       console.log(kleur.yellow("These are the usrnames available. "));
@@ -110,7 +132,7 @@ export async function crawlChats(chats) {
 
       await contineo();
       // await exit();
-      await new Promise((res) => setTimeout(res, 1e4));
+      await new Promise<void>((res) => setTimeout(res, 1e4));
 
       async function contineo() {
         if (newMsgLevel === totalMsgs) {
@@ -143,11 +165,10 @@ export async function crawlChats(chats) {
 
     /**
      * Check if I am already a member of a chat. Then join otherwise.
-     * @param {string[]} links - Links from messages.
-     * @param {string[]} usrnames - Usernames from messages.
-     * @returns {void} - Lets return nothing for now.
+     * @param usrnames - Usernames from messages.
+     * @returns Nothing.
      */
-    async function checkAndJoin(usrnames) {
+    async function checkAndJoin(usrnames: string[]) {
       console.log(
         kleur.green("Check if I am a member then join if otherwise. "),
       );
@@ -161,7 +182,7 @@ export async function crawlChats(chats) {
         const today = new Date(
           Date.UTC(tod.getUTCFullYear(), tod.getUTCMonth(), tod.getUTCDate()),
         );
-        let joined = [];
+        let joined: JoinedEntry[] = [];
 
         let joinedDate = (await JoinedDate.find({ date: today }))[0];
 
@@ -173,13 +194,13 @@ export async function crawlChats(chats) {
           joined = joinedDate.joined;
         }
 
-        const joinLater = await JoinLater.findOne({});
+        // The single `join_later` row is seeded by db/models.ts, so this is
+        // always present at runtime.
+        const joinLater = (await JoinLater.findOne({}))!;
 
-        const channel = await chatInstance(usrname);
+        const channel = (await chatInstance(usrname)) as ChatPayload;
 
         if (hasIssue(channel, usrname)) continue;
-
-        const channelName = channel.title;
 
         console.log(
           kleur.green("Check to see if I have join more than 3 groups today. "),
@@ -188,7 +209,7 @@ export async function crawlChats(chats) {
           //? At this point the I have joined a lot of channels for today. So I will push them into a database then work on them later.
           console.log(kleur.red("Have joined more than three channels today."));
 
-          joinLater.list.push(channel.id);
+          joinLater.list.push(Number(channel.id));
 
           console.log(kleur.green("Skipping to other usernames. "));
           continue;
@@ -204,16 +225,19 @@ export async function crawlChats(chats) {
         );
         if (
           !(await isMember(usrname)) &&
-          channel.fullChat.participantsCount > 2e3
+          channel.fullChat.participantsCount! > 2e3
         ) {
           //? Lets join this channel.
-          console.log(kleur.yellow("Joining ", channelName));
+          // NOTE: kleur colour functions only colour their first argument, so
+          // the second argument the original code passed was silently ignored.
+          // It is dropped here to keep the output identical.
+          console.log(kleur.yellow("Joining "));
 
           await client.invoke(
             new Api.channels.JoinChannel({ channel: usrname }),
           );
 
-          console.log(" This is the chat is. : ",Number(channel.fullChat.id));
+          console.log(" This is the chat is. : ", Number(channel.fullChat.id));
           console.log(kleur.green("Logging this data into the database. "));
           joinedDate.joined.push({
             chat_id: Number(channel.fullChat.id),
@@ -221,9 +245,7 @@ export async function crawlChats(chats) {
           });
           await joinedDate.save();
 
-          console.log(
-            kleur.blue("Successfully Joined and Logged : ", channelName),
-          );
+          console.log(kleur.blue("Successfully Joined and Logged : "));
         }
       }
     }

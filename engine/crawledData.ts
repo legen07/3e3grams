@@ -2,12 +2,25 @@
 
 import kleur from "kleur";
 
+/** Telegram links and usernames extracted from a string. */
+export interface ExtractedData {
+  links: string[];
+  usernames: string[];
+}
+
+/** Result of {@link sanitizeAndExtract}. */
+export interface SanitizedExtraction {
+  sanitized: string;
+  extLinks: string[];
+  extUsernames: string[];
+}
+
 /**
  * Sanitizes a string by removing potentially dangerous characters
- * @param {string} str - The string to sanitize
- * @returns {string} - Sanitized string
+ * @param str - The string to sanitize
+ * @returns Sanitized string
  */
-export function sanitizeString(str) {
+export function sanitizeString(str: string): string {
   if (typeof str !== 'string') {
     return '';
   }
@@ -35,16 +48,16 @@ export function sanitizeString(str) {
 
 /**
  * Extracts Telegram links and usernames from a string
- * @param {string} str - The string to analyze
- * @returns {Object} - Object containing arrays of links and usernames
+ * @param str - The string to analyze
+ * @returns Object containing arrays of links and usernames
  */
-export function extractTelegramData(str) {
+export function extractTelegramData(str: string): ExtractedData {
   if (typeof str !== 'string') {
     return { links: [], usernames: [] };
   }
 
-  const links = [];
-  const usernames = [];
+  const links: string[] = [];
+  const usernames: string[] = [];
 
   // ✅ FIXED: Extract ALL Telegram links including private invites with + and share links
   // This matches:
@@ -53,7 +66,7 @@ export function extractTelegramData(str) {
   // - t.me/c/123456789 (channel post)
   // - t.me/joinchat/abc123 (old invite format)
   const linkRegex = /(?:https?:\/\/)?(?:www\.)?(?:t\.me|telegram\.me|telegram\.org)\/([a-zA-Z0-9_+]+)(?:\/[a-zA-Z0-9_]+)?(?:\?[^\s]*)?/gi;
-  let match;
+  let match: RegExpExecArray | null;
   
   while ((match = linkRegex.exec(str)) !== null) {
     const fullLink = match[0];
@@ -68,7 +81,7 @@ export function extractTelegramData(str) {
 
   // ✅ FIXED: Also extract standalone invite codes
   const inviteRegex = /t\.me\/\+[a-zA-Z0-9_]+/gi;
-  let inviteMatch;
+  let inviteMatch: RegExpExecArray | null;
   while ((inviteMatch = inviteRegex.exec(str)) !== null) {
     const fullLink = `https://${inviteMatch[0]}`;
     if (!links.includes(fullLink)) {
@@ -90,7 +103,7 @@ export function extractTelegramData(str) {
 
   // Also catch standalone @usernames
   const standaloneRegex = /@[a-zA-Z0-9_]{5,32}/g;
-  let standMatch;
+  let standMatch: RegExpExecArray | null;
   while ((standMatch = standaloneRegex.exec(str)) !== null) {
     const username = standMatch[0];
     if (!usernames.includes(username) && /^@[a-zA-Z0-9_]{5,32}$/.test(username)) {
@@ -106,12 +119,12 @@ export function extractTelegramData(str) {
 
 /**
  * Main function: sanitizes a string and extracts Telegram data
- * @param {string} str - The input string
- * @returns {Object} - Object containing sanitized string, links, and usernames
+ * @param str - The input string
+ * @returns Object containing sanitized string, links, and usernames
  */
-export function sanitizeAndExtract(str) {
+export function sanitizeAndExtract(str: string): SanitizedExtraction {
   if (typeof str !== 'string') {
-    return { sanitized: '', links: [], usernames: [] };
+    return { sanitized: '', extLinks: [], extUsernames: [] };
   }
 
   // First extract data BEFORE sanitizing (to preserve links)

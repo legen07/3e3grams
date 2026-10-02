@@ -1,16 +1,19 @@
 // processUnreadMessages.mjs
 import { Api } from "telegram";
-import { client } from "./live";
+import { client } from "./live.ts";
 import kleur from "kleur";
-import { exit } from "../helpers/actions";
-import { fetchDialogs } from "./dialogs";
+import { exit } from "../helpers/actions.ts";
+import { fetchDialogs } from "./dialogs.ts";
+import type bigInt from "big-integer";
+
+// gramjs types request `hash` parameters as `long` (BigInteger). The original
+// code passed the plain number 0; the cast preserves that exact value.
+const HASH = 0 as unknown as bigInt.BigInteger;
 
 /**
  * Processes unread messages in a Telegram group.
- * @param {TelegramClient} client - GramJS client instance
- * @param {TelegramClient} groupInstance - Telegram group entity
  */
-async function chat() {
+async function chat(): Promise<void> {
   //? .1 Get unread count for the given group
 
   const chats = await fetchDialogs(client);
@@ -20,13 +23,19 @@ async function chat() {
 
   const dialogs = await client.invoke(
     new Api.messages.GetPeerDialogs({
-      peers: [new Api.InputDialogPeer({ peer: groupInstance })],
+      // `groupInstance` is a filtered array; the original code passes it as a
+      // single peer, which is preserved verbatim.
+      peers: [
+        new Api.InputDialogPeer({
+          peer: groupInstance as unknown as Api.TypeInputPeer,
+        }),
+      ],
     }),
   );
   console.log(dialogs);
 
   await exit();
-  const unreadCount = dialogs.dialogs[0].unreadCount;
+  const unreadCount = (dialogs.dialogs[0] as Api.Dialog).unreadCount;
   console.log(kleur.cyan(`Unread messages count: ${unreadCount}`));
   if (unreadCount === 0) {
     console.log(kleur.green("No unread messages. Exiting."));
@@ -38,32 +47,35 @@ async function chat() {
 
   const history = await client.invoke(
     new Api.messages.GetHistory({
-      peer: groupInstance,
+      peer: groupInstance as unknown as Api.TypeEntityLike,
       limit: unreadCount,
       offsetId: 0,
       addOffset: 0,
       maxId: 0,
       minId: 0,
-      hash: 0,
+      hash: HASH,
     }),
   );
-  let messages = history.messages; // newest first
+  let messages = (history as Api.messages.Messages).messages as Api.Message[]; // newest first
   messages = messages.reverse(); // oldest first
   console.log(kleur.cyan(`Fetched ${messages.length} unread messages.`));
 
   // Keep track of already processed messages and thread roots
-  const processedMessageIds = new Set();
-  const processedThreadRoots = new Set();
+  const processedMessageIds = new Set<Api.Message["id"]>();
+  const processedThreadRoots = new Set<Api.Message["id"]>();
 
   // ------------------------------------------------------------------
   // Helper: traverse reply chain to find the root message of a thread
   // ------------------------------------------------------------------
-  async function getThreadRootId(msgId) {
+  async function getThreadRootId(msgId: Api.Message["id"]): Promise<Api.Message["id"]> {
     let currentId = msgId;
     while (true) {
-      const msgs = await client.getMessages(groupInstance, {
-        ids: [currentId],
-      });
+      const msgs = await client.getMessages(
+        groupInstance as unknown as Api.TypeEntityLike,
+        {
+          ids: [currentId as unknown as number],
+        },
+      );
       if (!msgs || msgs.length === 0) break;
       const msg = msgs[0];
       if (msg.replyTo && msg.replyTo.replyToMsgId) {
@@ -78,16 +90,22 @@ async function chat() {
   // ------------------------------------------------------------------
   // Placeholder: AI processing
   // ------------------------------------------------------------------
-  async function aiProcessMessages(messageIds, chat) {
+  async function aiProcessMessages(
+    messageIds: Api.Message["id"][],
+    chat?: unknown,
+  ): Promise<{ message: string; status: boolean }> {
     console.log(kleur.blue("Calling AI on message IDs:"), messageIds);
     // Replace this with your actual AI call.
     return { message: "AI response placeholder", status: true };
   }
 
   // ------------------------------------------------------------------
-  // Placeholder: store processed IDs (MongoDB)
+  // Placeholder: store processed IDs (SQLite)
   // ------------------------------------------------------------------
-  async function saveProcessedMessageIds(messageIds, chat) {
+  async function saveProcessedMessageIds(
+    messageIds: Api.Message["id"][],
+    chat?: unknown,
+  ): Promise<void> {
     console.log(kleur.green("Saving processed IDs to DB:"), messageIds);
     // Replace with your real DB logic.
   }
@@ -122,24 +140,27 @@ async function chat() {
       }
 
       // Fetch the root message
-      const rootMsgArr = await client.getMessages(groupInstance, {
-        ids: [rootId],
-      });
+      const rootMsgArr = await client.getMessages(
+        groupInstance as unknown as Api.TypeEntityLike,
+        {
+          ids: [rootId as unknown as number],
+        },
+      );
       const rootMsg = rootMsgArr[0];
 
       // Fetch all replies to the root
       const repliesResult = await client.invoke(
         new Api.messages.GetReplies({
-          peer: groupInstance,
-          msgId: rootId,
+          peer: groupInstance as unknown as Api.TypeEntityLike,
+          msgId: rootId as unknown as number,
           offsetId: 0,
           limit: 100, // adjust if needed
           maxId: 0,
           minId: 0,
-          hash: 0,
+          hash: HASH,
         }),
       );
-      const replies = repliesResult.messages; // does NOT include root
+      const replies = (repliesResult as Api.messages.Messages).messages as Api.Message[]; // does NOT include root
 
       // Combine root + replies, sort by date, take the last 10 messages
       const threadMessages = [rootMsg, ...replies].sort(
@@ -159,9 +180,9 @@ async function chat() {
       // Send to AI
       const aiResult = await aiProcessMessages(last10Ids, groupInstance);
       if (aiResult.status) {
-        await client.sendMessage(groupInstance, {
+        await client.sendMessage(groupInstance as unknown as Api.TypeEntityLike, {
           message: aiResult.message,
-          replyTo: msg.id,
+          replyTo: msg.id as unknown as number,
         });
         console.log(
           kleur.green(`Replied to message ${msg.id} with: ${aiResult.message}`),
@@ -180,12 +201,12 @@ async function chat() {
       );
 
       // Get a valid InputPeer for the sender
-      const senderInputPeer = await client.getInputEntity(msg.fromId);
+      const senderInputPeer = await client.getInputEntity(msg.fromId!);
 
       // Search for last 7 messages from this user in the chat
       const searchResult = await client.invoke(
         new Api.messages.Search({
-          peer: groupInstance,
+          peer: groupInstance as unknown as Api.TypeEntityLike,
           q: "",
           fromId: senderInputPeer,
           filter: new Api.InputMessagesFilterEmpty(),
@@ -196,10 +217,10 @@ async function chat() {
           limit: 7,
           maxId: 0,
           minId: 0,
-          hash: 0,
+          hash: HASH,
         }),
       );
-      const userMessages = searchResult.messages; // newest first
+      const userMessages = (searchResult as Api.messages.Messages).messages as Api.Message[]; // newest first
       const ids = userMessages.map((m) => m.id);
       console.log(
         kleur.blue(`Collected ${ids.length} messages from user: ${ids}`),
@@ -221,9 +242,9 @@ async function chat() {
       if (aiResult.status) {
         // Reply to the most recent message of this user (first in array)
         const replyToId = ids[0];
-        await client.sendMessage(groupInstance, {
+        await client.sendMessage(groupInstance as unknown as Api.TypeEntityLike, {
           message: aiResult.message,
-          replyTo: replyToId,
+          replyTo: replyToId as unknown as number,
         });
         console.log(
           kleur.green(

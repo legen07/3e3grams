@@ -82,7 +82,8 @@ git commit -m "fix: resolve session reconnection bug"
 
 ## 📏 Coding Standards
 
-- **Language**: JavaScript (ES modules) with TypeScript support
+- **Language**: TypeScript (ES module syntax, strict mode)
+- **Type checking**: Run `bun run typecheck` (`tsc --noEmit`) before submitting
 - **Formatter**: Follow the project's ESLint configuration
 - **Imports**: Use ES module syntax (`import`/`export`)
 - **Environment**: Never commit `.env` files — use `.env.example`
@@ -99,7 +100,7 @@ git commit -m "fix: resolve session reconnection bug"
 
 - [telegram.js](https://github.com/telegram-thunder/telegram.js) — Telegram client library
 - [Playwright](https://playwright.dev/) — Browser automation
-- [Mongoose](https://mongoosejs.com/) — MongoDB ODM
+- [node:sqlite](https://nodejs.org/api/sqlite.html) — built-in SQLite module
 - [Kleur](https://github.com/lukeed/kleur) — Terminal coloring
 
 ## 📄 License

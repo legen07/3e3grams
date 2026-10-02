@@ -23,7 +23,7 @@ jobs:
         run: bun install
 
       - name: Run ESLint
-        run: bun run lint 2>/dev/null || npx eslint . --ext .js
+        run: bun run lint
 
       - name: Check formatting
         run: bun run format --check 2>/dev/null || echo "No formatter configured"
@@ -87,7 +87,7 @@ jobs:
         run: bun install
 
       - name: TypeScript check
-        run: npx tsc --noEmit 2>/dev/null || echo "TypeScript check skipped"
+        run: bun run typecheck
 
       - name: Verify build
-        run: bun run build 2>/dev/null || echo "Build step not configured"
+        run: bun run build

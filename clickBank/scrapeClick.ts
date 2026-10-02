@@ -2,17 +2,16 @@ import { chromium } from "playwright-extra";
 import stealth from "puppeteer-extra-plugin-stealth";
 import { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
-import { organicTyper } from "../assets/organicTyper.js";
-import { MongoClient } from "mongodb";
+import { organicTyper } from "../assets/organicTyper.ts";
+import { Collection, openDatabase } from "../db/collection.ts";
 // import { Locator } from "playwright";
 
 // let products: {};
 
-const client = new MongoClient("mongodb://localhost:27017");
-await client.connect();
-
-const db = client.db("click_bank");
-const col = db.collection("aff_products");
+const db = openDatabase(
+  process.env.SQLITE_CLICKBANK_PATH || "./data/click_bank.sqlite",
+);
+const col = new Collection(db, "aff_products");
 
 chromium.use(stealth());
 
@@ -82,12 +81,12 @@ async function shuShuOHajimeru() {
         )
         .textContent();
 
-      console.log(await col.findOne({ proName: shohinMei }));
-      if (await col.findOne({ proName: shohinMei })) {
+      console.log(col.findOne({ proName: shohinMei }));
+      if (col.findOne({ proName: shohinMei })) {
         continue;
       }
 
-      const linksObj = { affPage: "", salesPage: "", contacts: [] as String[] };
+      const linksObj = { affPage: "", salesPage: "", contacts: [] as string[] };
 
       const linksSelectors = await konoShohin
         .locator(
@@ -172,7 +171,7 @@ async function shuShuOHajimeru() {
         ).map((each) => each.textContent()),
       );
 
-      let filePath;
+      let filePath: string | undefined;
       //? Numbers
 
       const obj = {
